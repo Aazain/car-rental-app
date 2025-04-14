@@ -1,24 +1,30 @@
 import { View, Text, Button, TextInput, StyleSheet, Pressable } from "react-native"
 import {useState} from "react"
 import Listings from "./Listings"
-import { db } from "../firebaseConfig"
+import { db, auth } from "../firebaseConfig"
+import {signInWithEmailAndPassword } from "firebase/auth";
 
 const Login = ({navigation}) => {
-    const [username, setUsername] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("aazaintest@gmail.com");
+    const [password, setPassword] = useState("testpassword");
 
-    const loginPressed = () => {
-        navigation.navigate('Listings')
+    const authenticateUser = async () => {
+        try{
+            await signInWithEmailAndPassword(auth, email, password)
+            navigation.navigate('Listings')
+        }catch(err){
+            alert(err)
+        }
     }
-
+    
     return (
         <View style={styles.container}>
             <Text>Login</Text>
             <View>
-                <TextInput placeholder="Username" value={username} onChangeText={setUsername} />
+                <TextInput placeholder="Email" value={email} onChangeText={setEmail} />
                 <TextInput placeholder="Password" value={password} onChangeText={setPassword} />
             </View>
-            <Pressable onPress={loginPressed}>
+            <Pressable onPress={authenticateUser}>
                 <Text>Login Button</Text>
             </Pressable>
         </View>

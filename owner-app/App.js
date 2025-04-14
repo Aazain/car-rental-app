@@ -15,7 +15,7 @@ export default function App() {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen name="Login" component={Login}/>
-        <Stack.Screen name="Listings" component={Listings}/>
+        <Stack.Screen name="Listings" component={Listings} options={{ headerShown: false }}/>
         <Stack.Screen name="Create-Listing" component={CreateListing}/>
       </Stack.Navigator>
     </NavigationContainer>

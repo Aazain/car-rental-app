@@ -2,10 +2,9 @@ import {useState} from "react"
 import { View, Text, Button, TextInput, StyleSheet, Pressable } from "react-native"
 import { db } from "../firebaseConfig"
 import { collection, addDoc } from "firebase/firestore";
-import Listings from "./Listings"
 
 
-const CreateListing = ({navigation}) => {
+const CreateListing = ({route, navigation}) => {
     const [make, setMake] = useState("")
     const [model, setModel] = useState("")
     const [plate, setPlate] = useState("")
@@ -13,22 +12,24 @@ const CreateListing = ({navigation}) => {
     const [photo, setPhoto] = useState("")
     const [city, setCity] = useState("")
     const [address, setAddress] = useState("")
+    const { user } = route.params 
 
     const listingConfirmed = async () => {
         const listingToCreate = {
             make: make,
-            mode: model,
+            model: model,
             plate: plate,
             cost: parseFloat(cost),
             photo: photo,
             city: city,
-            address: address
+            address: address,
+            owner: user
         }
 
         try {
             const docRef = await addDoc(collection(db, "listings"), listingToCreate)
             alert(`Created Listing: ${docRef.id}`)
-            navigation.navigate("Listings")
+            navigation.goBack()
         } catch (err){
             console.log(err)
         }
@@ -37,12 +38,12 @@ const CreateListing = ({navigation}) => {
     return(
         <View style={styles.container}>
             <Text>Create Listing</Text>
-            <View>
+            <View style={{width: 300, height: 200}}>
                 <TextInput placeholder="Make" value={make} onChangeText={setMake} />
                 <TextInput placeholder="Model" value={model} onChangeText={setModel} />
                 <TextInput placeholder="License Plate" value={plate} onChangeText={setPlate} />
-                <TextInput placeholder="Cost" keyboardType="decimal-pad" value={cost} onChangeText={setCost} />
-                <TextInput placeholder="Photo Link" value={photo} onChangeText={setPhoto} />
+                <TextInput placeholder="Cost" keyboardType="decimal-pad" value={cost} onChangeText={setCost}/>
+                <TextInput placeholder="Photo Link" value={photo} onChangeText={setPhoto} scrollEnabled={true} />
                 <TextInput placeholder="City" value={city} onChangeText={setCity} />
                 <TextInput placeholder="Address" value={address} onChangeText={setAddress} />
                 <Pressable onPress={listingConfirmed}>
