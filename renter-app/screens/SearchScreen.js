@@ -1,14 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Dimensions, Alert, Button, ActivityIndicator } from 'react-native';
-import MapView, { Marker, Callout } from 'react-native-maps';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  Dimensions,
+  Alert,
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  TouchableOpacity,
+} from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { db } from '../firebaseConfig';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import * as Location from 'expo-location';
 
 const { width, height } = Dimensions.get('window');
-
-// TEMP: hardcoded renter UID (until login is implemented)
-const dummyRenterId = "renter_demo_123";
+const dummyRenterId = 'renter_demo_123';
 
 export default function SearchScreen() {
   const [city, setCity] = useState('');
@@ -20,8 +29,9 @@ export default function SearchScreen() {
     longitudeDelta: 0.0421,
   });
   const [loading, setLoading] = useState(false);
+  const [selectedCar, setSelectedCar] = useState(null);
+  const [showPopup, setShowPopup] = useState(false);
 
-  // Request location permissions on component mount
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -36,9 +46,8 @@ export default function SearchScreen() {
     try {
       const q = query(collection(db, 'listings'), where('city', '==', city));
       const snapshot = await getDocs(q);
-      const results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 
-      // Geocode each listing's address to obtain coordinates
       const listingsWithCoords = await Promise.all(
         results.map(async (listing) => {
           try {
@@ -56,11 +65,9 @@ export default function SearchScreen() {
         })
       );
 
-      // Filter out any listings that failed to geocode
-      const validListings = listingsWithCoords.filter(listing => listing !== null);
+      const validListings = listingsWithCoords.filter((listing) => listing !== null);
       setListings(validListings);
 
-      // Update map region to center on the first valid listing
       if (validListings.length > 0) {
         setRegion({
           latitude: validListings[0].coordinate.latitude,
@@ -70,8 +77,8 @@ export default function SearchScreen() {
         });
       }
     } catch (err) {
-      console.error("Error fetching listings:", err);
-      Alert.alert("Error", "Failed to fetch listings. Please try again.");
+      console.error('Error fetching listings:', err);
+      Alert.alert('Error', 'Failed to fetch listings. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -93,13 +100,24 @@ export default function SearchScreen() {
         cost: car.cost,
         date: new Date().toISOString(),
         ownerId: car.owner,
-        status: 'booked'
+        status: 'booked',
       });
-      Alert.alert("✅ Booking Confirmed", `You booked the ${car.make} ${car.model}`);
+      Alert.alert('✅ Booking Confirmed', `You booked the ${car.make} ${car.model}`);
+      setShowPopup(false);
     } catch (err) {
-      console.error("Booking error:", err);
-      Alert.alert("Booking failed", "Something went wrong. Try again.");
+      console.error('Booking error:', err);
+      Alert.alert('Booking failed', 'Something went wrong. Try again.');
     }
+  };
+
+  const openPopup = (car) => {
+    setSelectedCar(car);
+    setShowPopup(true);
+  };
+
+  const closePopup = () => {
+    setSelectedCar(null);
+    setShowPopup(false);
   };
 
   return (
@@ -115,28 +133,44 @@ export default function SearchScreen() {
         <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
       ) : (
         <MapView style={styles.map} region={region}>
-          {listings.map((car) => (
-            car.coordinate && car.coordinate.latitude && car.coordinate.longitude && (
-              <Marker
-                key={car.id}
-                coordinate={{
-                  latitude: car.coordinate.latitude,
-                  longitude: car.coordinate.longitude
-                }}
-              >
-                <Callout>
-                  <View style={{ width: 200 }}>
-                    <Text style={styles.bold}>{car.make} {car.model}</Text>
-                    <Text>Plate: {car.plate}</Text>
-                    <Text>${car.cost}/day</Text>
-                    <Button title="BOOK NOW" onPress={() => handleBooking(car)} />
-                  </View>
-                </Callout>
-              </Marker>
-            )
-          ))}
+          {listings.map(
+            (car) =>
+              car.coordinate && (
+                <Marker
+                  key={car.id}
+                  coordinate={{
+                    latitude: car.coordinate.latitude,
+                    longitude: car.coordinate.longitude,
+                  }}
+                  onPress={() => openPopup(car)}
+                />
+              )
+          )}
         </MapView>
       )}
+
+      {/* Modal popup for car details */}
+      <Modal visible={showPopup} transparent animationType="fade" onRequestClose={closePopup}>
+        <Pressable style={styles.modalOverlay} onPress={closePopup}>
+          <View style={styles.popupContainer}>
+            {selectedCar && (
+              <>
+                <Text style={styles.popupTitle}>
+                  {selectedCar.make} {selectedCar.model}
+                </Text>
+                <Text>Plate: {selectedCar.plate}</Text>
+                <Text>${selectedCar.cost}/day</Text>
+                <TouchableOpacity
+                  style={styles.bookButton}
+                  onPress={() => handleBooking(selectedCar)}
+                >
+                  <Text style={styles.bookButtonText}>BOOK NOW</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -153,13 +187,42 @@ const styles = StyleSheet.create({
     width: width,
     height: height,
   },
-  bold: {
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
   loader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  popupContainer: {
+    width: 250,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    padding: 16,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  popupTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 8,
+  },
+  bookButton: {
+    marginTop: 12,
+    backgroundColor: '#3498db',
+    paddingVertical: 8,
+    borderRadius: 5,
+  },
+  bookButtonText: {
+    color: 'white',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
 });
