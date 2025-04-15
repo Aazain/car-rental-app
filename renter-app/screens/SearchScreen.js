@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -11,9 +11,9 @@ import {
   Pressable,
   TouchableOpacity,
   Image,
-} from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
-import { db } from '../firebaseConfig';
+} from "react-native";
+import MapView, { Marker } from "react-native-maps";
+import { db } from "../firebaseConfig";
 import {
   collection,
   query,
@@ -23,14 +23,14 @@ import {
   deleteDoc,
   doc,
   getDoc,
-} from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import * as Location from 'expo-location';
+} from "firebase/firestore";
+import { getAuth } from "firebase/auth";
+import * as Location from "expo-location";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
-export default function SearchScreen() {
-  const [city, setCity] = useState('');
+const SearchScreen = () => {
+  const [city, setCity] = useState("");
   const [listings, setListings] = useState([]);
   const [region, setRegion] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,8 +40,8 @@ export default function SearchScreen() {
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required.');
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Location permission is required.");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
@@ -58,42 +58,45 @@ export default function SearchScreen() {
   const fetchAllListings = async () => {
     setLoading(true);
     try {
-      const snapshot = await getDocs(collection(db, 'listings'));
-      const results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  
+      const snapshot = await getDocs(collection(db, "listings"));
+      const results = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
       const listingsWithExtras = await Promise.all(
         results.map(async (listing) => {
           try {
             let coordinate = null;
-  
+
             if (listing.address && listing.address.trim().length > 0) {
               const geocoded = await Location.geocodeAsync(listing.address);
               if (geocoded.length > 0) {
                 coordinate = geocoded[0];
               } else {
-                console.warn(`Could not geocode address for ${listing.make}: ${listing.address}`);
+                console.warn(
+                  `Could not geocode address for ${listing.make}: ${listing.address}`
+                );
               }
             }
-  
-     
+
             if (!coordinate) {
               coordinate = {
                 latitude: 43.6532,
                 longitude: -79.3832,
               };
             }
-  
-            // Fetch owner info
-            let ownerName = 'N/A';
+
+            let ownerName = "N/A";
             if (listing.owner) {
-              const ownerRef = doc(db, 'users', listing.owner);
+              const ownerRef = doc(db, "users", listing.owner);
               const ownerSnap = await getDoc(ownerRef);
               if (ownerSnap.exists()) {
                 const ownerData = ownerSnap.data();
                 ownerName = `${ownerData.firstName} ${ownerData.lastName}`;
               }
             }
-  
+
             return {
               ...listing,
               coordinate,
@@ -101,21 +104,20 @@ export default function SearchScreen() {
               imageUrl: listing.photo || null,
             };
           } catch (error) {
-            console.warn('Listing skipped due to error:', error.message);
+            console.warn("Listing skipped due to error:", error.message);
             return null;
           }
         })
       );
-  
+
       setListings(listingsWithExtras.filter(Boolean));
     } catch (err) {
-      console.error('Error loading listings:', err);
-      Alert.alert('Error', 'Could not load listings.');
+      console.error("Error loading listings:", err);
+      Alert.alert("Error", "Could not load listings.");
     } finally {
       setLoading(false);
     }
   };
-  
 
   const centerMapToCity = async () => {
     try {
@@ -128,10 +130,10 @@ export default function SearchScreen() {
           longitudeDelta: 0.1,
         });
       } else {
-        Alert.alert('Not Found', 'City not found.');
+        Alert.alert("Not Found", "City not found.");
       }
     } catch {
-      Alert.alert('Error', 'Could not locate city.');
+      Alert.alert("Error", "Could not locate city.");
     }
   };
 
@@ -139,29 +141,33 @@ export default function SearchScreen() {
     try {
       const auth = getAuth();
       const renterId = auth.currentUser?.uid;
-  
+
       if (!renterId) {
-        Alert.alert('Not logged in', 'You must be logged in to book.');
+        Alert.alert("Not logged in", "You must be logged in to book.");
         return;
       }
-  
-      
-      const q = query(collection(db, 'bookings'), where('renterId', '==', renterId));
+
+      const q = query(
+        collection(db, "bookings"),
+        where("renterId", "==", renterId)
+      );
       const existing = await getDocs(q);
       existing.forEach(async (docu) => {
-        await deleteDoc(doc(db, 'bookings', docu.id));
+        await deleteDoc(doc(db, "bookings", docu.id));
       });
-  
-      
-      const userRef = doc(db, 'users', renterId);
+
+      const userRef = doc(db, "users", renterId);
       const userSnap = await getDoc(userRef);
-      const renterFirstName = userSnap.exists() ? userSnap.data().firstName : 'N/A';
-      const renterLastName = userSnap.exists() ? userSnap.data().lastName : 'N/A';
-  
-      const code = Math.floor(100000 + Math.random() * 900000); // 6-digit confirmation code
-  
-      
-      await addDoc(collection(db, 'bookings'), {
+      const renterFirstName = userSnap.exists()
+        ? userSnap.data().firstName
+        : "N/A";
+      const renterLastName = userSnap.exists()
+        ? userSnap.data().lastName
+        : "N/A";
+
+      const code = Math.floor(100000 + Math.random() * 900000);
+
+      await addDoc(collection(db, "bookings"), {
         renterId,
         renterFirstName,
         renterLastName,
@@ -172,24 +178,23 @@ export default function SearchScreen() {
         cost: car.cost,
         address: car.address,
         city: car.city,
-        photo: car.imageUrl || null,  // 👈 Add image here
+        photo: car.imageUrl || null,
         confirmationCode: code,
         ownerId: car.owner,
-        status: 'booked',
+        status: "booked",
         date: new Date().toISOString(),
       });
-  
+
       Alert.alert(
-        'Booking Confirmed',
+        "Booking Confirmed",
         `Confirmation code: ${code}\nPickup: ${car.address}, ${car.city}`
       );
       setShowPopup(false);
     } catch (err) {
       console.error(err);
-      Alert.alert('Booking Failed', 'Try again later.');
+      Alert.alert("Booking Failed", "Try again later.");
     }
   };
-  
 
   return (
     <View style={styles.container}>
@@ -231,7 +236,10 @@ export default function SearchScreen() {
         animationType="fade"
         onRequestClose={() => setShowPopup(false)}
       >
-        <Pressable style={styles.modalOverlay} onPress={() => setShowPopup(false)}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setShowPopup(false)}
+        >
           <View style={styles.popupContainer}>
             {selectedCar && (
               <>
@@ -261,7 +269,9 @@ export default function SearchScreen() {
       </Modal>
     </View>
   );
-}
+};
+
+export default SearchScreen;
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
@@ -277,65 +287,65 @@ const styles = StyleSheet.create({
   },
   loader: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   customMarker: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 16,
     borderWidth: 3,
-    borderColor: '#ccc',
+    borderColor: "#ccc",
     elevation: 5,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.25,
     shadowRadius: 1.5,
   },
   markerText: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 14,
-    color: '#000',
+    color: "#000",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   popupContainer: {
     width: 280,
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 8,
     padding: 16,
     elevation: 5,
   },
   carImage: {
-    width: '100%',
+    width: "100%",
     height: 150,
     marginBottom: 10,
     borderRadius: 6,
   },
   popupTitle: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 18,
     marginBottom: 4,
   },
   price: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
     fontSize: 16,
     marginVertical: 8,
   },
   bookButton: {
-    backgroundColor: '#1e3d59',
+    backgroundColor: "#1e3d59",
     paddingVertical: 10,
     borderRadius: 5,
     marginTop: 10,
   },
   bookButtonText: {
-    color: 'white',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    color: "white",
+    textAlign: "center",
+    fontWeight: "bold",
   },
 });

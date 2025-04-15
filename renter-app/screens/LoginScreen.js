@@ -1,7 +1,7 @@
 import { View, Text, TextInput, StyleSheet, Pressable, SafeAreaView, Alert } from "react-native";
 import { useState } from "react";
 import { auth } from "../firebaseConfig";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState("rentaltest@gmail.com");
@@ -14,6 +14,16 @@ const LoginScreen = ({ navigation }) => {
       navigation.navigate("Main", { screen: "Search" });
     } catch (err) {
       Alert.alert("Login Failed", err.message);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      Alert.alert("Logged out", "You have been logged out successfully.");
+      navigation.navigate("Login"); // Navigate to the Login screen after logging out
+    } catch (err) {
+      Alert.alert("Logout Failed", err.message);
     }
   };
 
@@ -86,6 +96,7 @@ const styles = StyleSheet.create({
     paddingVertical: 25,
     borderRadius: 20,
     borderWidth: 3,
+    marginTop: 20,
   },
 
   loginButtonText: {
